@@ -1,0 +1,41 @@
+---
+- name: Deploy docker compose file
+  hosts: all  
+  vars_files:
+    - "host_vars/{{ inventory_hostname }}/vars.yml"
+    - "host_vars/{{ inventory_hostname }}/vault.yml"
+  
+  tasks: 
+    - name verify docker instlation
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+      failed_when: docker_version.rc != 0
+      tags: docker
+    
+    - name verify nginx instlation
+      ansible.builtin.command: nginx -v
+      register: nginx_version
+      changed_when: false
+      failed_when: nginx_version.rc != 0
+      tags: nginx
+    
+    - name create architecture directory
+      file:
+        path: {{inventory_hostname}}
+        state: directory
+        mode: '0755'
+      tags: create_directory
+    
+    - name echo env variables
+      ansible.builtin.debug:
+        msg: "env variables : {{ item }}"
+      loop: "{{ lookup('file', 'host_vars/' + inventory_hostname + '/env') }}"
+      tags: env
+    
+    - name: Download the docker-compose.yml file
+      template:
+        src: "host_vars/{{ inventory_hostname }}/docker/docker-compose.yml.j2"
+        dest: "/home/ubuntu/docker-compose.yml"
+
+      

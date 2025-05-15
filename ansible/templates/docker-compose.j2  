@@ -1,0 +1,57 @@
+version: '3.8'
+
+volumes:
+  {{ db_volume }}:
+
+services:
+
+  db:
+    image: postgres:17
+    container_name: {{ db_container }}
+    restart: always
+    environment:
+      POSTGRES_DB: "${BDD_NAME}"
+      POSTGRES_USER: "${BDD_USER}"
+      POSTGRES_PASSWORD: "${BDD_PASSWORD}"
+    volumes:
+      - {{ db_volume }}:/var/lib/postgresql/data
+    ports:
+      - "{{ db_external_port }}:5432"
+
+  back:
+    image: {{ back_image }}
+    container_name: {{ back_container }}
+    restart: unless-stopped
+    ports:
+      - "{{ back_external_port }}:8000"
+    environment:
+      SECRET_KEY: "${SECRET_KEY}"
+      DATABASE_URL: "${DATABASE_URL}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_PUBLIC_URL: "${MINIO_PUBLIC_URL}"
+      MINIO_BUCKET: "${MINIO_BUCKET}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  frontend:
+    image: {{ front_image }}
+    container_name: {{ front_container }}
+    restart: unless-stopped
+    ports:
+      - "{{ front_external_port }}:3000"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: {{ watchtower_container }}
+    restart: always
+    command:
+      - --interval
+      - "${WATCHTOWER_INTERVAL:-300}"
+      - --label-enable
+      - --cleanup
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -1,41 +1,113 @@
 ---
-- name: Deploy docker compose file
-  hosts: all  
-  vars_files:
-    - "host_vars/{{ inventory_hostname }}/vars.yml"
-    - "host_vars/{{ inventory_hostname }}/vault.yml"
-  
-  tasks: 
-    - name verify docker instlation
-      ansible.builtin.command: docker --version
-      register: docker_version
-      changed_when: false
-      failed_when: docker_version.rc != 0
-      tags: docker
-    
-    - name verify nginx instlation
-      ansible.builtin.command: nginx -v
-      register: nginx_version
-      changed_when: false
-      failed_when: nginx_version.rc != 0
-      tags: nginx
-    
-    - name create architecture directory
-      file:
-        path: {{inventory_hostname}}
-        state: directory
-        mode: '0755'
-      tags: create_directory
-    
-    - name echo env variables
-      ansible.builtin.debug:
-        msg: "env variables : {{ item }}"
-      loop: "{{ lookup('file', 'host_vars/' + inventory_hostname + '/env') }}"
-      tags: env
-    
-    - name: Download the docker-compose.yml file
-      template:
-        src: "host_vars/{{ inventory_hostname }}/docker/docker-compose.yml.j2"
-        dest: "/home/ubuntu/docker-compose.yml"
+- name: Déployer LIKE-IT (pré-prod ou prod)
+  hosts: all
+  become: true
 
-      
+  # Charge à la fois vars claire et chiffrées
+  vars_files:
+    - host_vars/{{ inventory_hostname }}.yml
+
+  vars:
+    # où placer votre projet sur le Raspberry
+    project_base: /home/user
+
+  tasks:
+    - name: 1️⃣ Installer Docker
+      apt:
+        name:
+          - docker.io
+          - docker-compose-plugin
+        state: latest
+        update_cache: true
+      tags: docker
+
+    - name: ▶️ Démarrer et activer Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+      tags: docker
+
+    - name: 2️⃣ Installer Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: true
+      tags: nginx
+
+    - name: ▶️ Démarrer et activer Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: true
+      tags: nginx
+
+    - name: 3️⃣ Créer le répertoire du projet
+      file:
+        path: "{{ project_base }}/{{ project_path }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        mode: "0755"
+      tags: setup
+
+    - name: 4️⃣ Générer .env pour Docker (si besoin)
+      copy:
+        dest: "{{ project_base }}/{{ project_path }}/.env"
+        content: |
+          BDD_NAME={{ BDD_NAME }}
+          BDD_USER={{ BDD_USER }}
+          BDD_PASSWORD={{ BDD_PASSWORD }}
+          SECRET_KEY={{ SECRET_KEY }}
+          DATABASE_URL={{ DATABASE_URL }}
+          MINIO_ACCESS_KEY={{ MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY={{ MINIO_SECRET_KEY }}
+          MINIO_ENDPOINT={{ MINIO_ENDPOINT }}
+          MINIO_PUBLIC_URL={{ MINIO_PUBLIC_URL }}
+          MINIO_BUCKET={{ MINIO_BUCKET }}
+      tags: env
+
+    - name: 5️⃣ Générer docker-compose.yml
+      template:
+        src: docker-compose.j2
+        dest: "{{ project_base }}/{{ project_path }}/docker-compose.yml"
+      tags: compose
+      notify: 🐳 Lancer/mettre à jour la stack
+
+    - name: 6️⃣ Obtenir ou renouveler le certificat SSL
+      shell: |
+        certbot certonly --nginx \
+          -d {{ domain }} \
+          --non-interactive --agree-tos \
+          --email {{ certbot_email }}
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      tags: certbot
+      notify: 🔄 Reload Nginx
+
+    - name: 7️⃣ Générer la conf Nginx
+      template:
+        src: nginx.conf.j2
+        dest: "/etc/nginx/sites-available/{{ domain }}.conf"
+      tags: nginx
+      notify: 🔄 Reload Nginx
+
+    - name: 8️⃣ Activer le site Nginx
+      file:
+        src: "/etc/nginx/sites-available/{{ domain }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
+        state: link
+      tags: nginx
+      notify: 🔄 Reload Nginx
+
+  handlers:
+    - name: 🔄 Reload Nginx
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: 🐳 Lancer/mettre à jour la stack
+      community.docker.docker_compose:
+        project_src: "{{ project_base }}/{{ project_path }}"
+        build: false
+        pull: true
+        state: present

@@ -1,0 +1,37 @@
+# host_vars/like-it-pre-prod.coak.fr.yml
+# ------------------------------------------------------------------------------------------------
+project_path: like-it-pre-prod
+environment: preprod
+
+# ports
+db_external_port: 5433
+back_external_port: 8001
+front_external_port: 3001
+
+# noms d’image
+back_image: ghcr.io/likes-it/api:pre-prod
+front_image: ghcr.io/likes-it-front:pre-prod
+
+# noms de containers & volumes
+db_volume: db_data_preprod
+db_container: likes-it-db-pre-prod
+back_container: likes-it-api-pre-prod
+front_container: likes-it-front-pre-prod
+watchtower_container: watchtower-pre-prod
+
+# Vars for container
+DATABASE_URL: postgresql+psycopg2://like-it-pre-prod:postgres@db:5432/postgres
+MINIO_BUCKET: likes-it-pre-prod
+MINIO_ENDPOINT: https://minio.coak.fr
+MINIO_PUBLIC_URL: https://minio.coak.fr
+
+#  Secrets
+BDD_NAME:like-it-pre-prod
+BDD_PASSWORD: 12345678910 
+BDD_USER: coak
+MINIO_ACCESS_KEY: coak
+MINIO_SECRET_KEY: 123456789
+RASPBERRY_HOST: ssh.coak.fr
+RASPBERRY_SSH_KEY:
+RASPBERRY_USER: user
+SECRET_KEY: mysupersecret
