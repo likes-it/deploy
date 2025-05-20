@@ -1,4 +1,0 @@
-DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/postgres
-MINIO_BUCKET: likes-it-pre-prod
-MINIO_ENDPOINT: https://minio.coak.fr
-MINIO_PUBLIC_URL: https://minio.coak.fr
