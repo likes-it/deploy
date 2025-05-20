@@ -4,6 +4,6 @@
   become: true
   roles:
     - { role: docker,    tags: docker }
-    - { role: nginx,     tags: nginx }
     - { role: certbot,   tags: certbot }
+    - { role: nginx,     tags: nginx }
     - { role: deploy,    tags: deploy}
