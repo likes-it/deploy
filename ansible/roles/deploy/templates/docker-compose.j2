@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     ports:
       - "{{ front_external_port }}:3000"
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
