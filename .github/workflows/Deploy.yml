@@ -1,0 +1,60 @@
+name: Déploiement Ansible
+
+on:
+  pull_request:
+    types: [opened, synchronize ]
+    branches:
+      - main
+      - develop
+
+env:
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+
+jobs:
+  deploy-prod:
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du repo
+        uses: actions/checkout@v3
+
+      - name: Charger la clé SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Déployer en PROD
+        working-directory: ansible
+        run: |
+          echo "${{ secrets.VAULT_PASSWORD_PROD }}" > vault_pass.txt
+          ansible-playbook -i hosts pb-deploy.yml \
+            --limit=prod
+            --vault-password-file vault_pass.txt
+          rm vault_pass.txt
+
+  deploy-preprod:
+    if: |
+      github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du repo
+        uses: actions/checkout@v3
+
+      - name: Charger la clé SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Déployer en PRÉ-PROD
+        working-directory: ansible
+        run: |
+          echo "${{ secrets.VAULT_PASSWORD_PRE_PROD }}" > vault_pass.txt
+          ansible-playbook -i hosts pb-deploy.yml \
+            --limit=pre_prod
+            --vault-password-file vault_pass.txt
+            --check
+          rm vault_pass.txt
