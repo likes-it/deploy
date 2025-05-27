@@ -53,7 +53,7 @@ jobs:
         working-directory: ansible
         run: |
           pwd
-          echo "'${{ secrets.VAULT_PASSWORD_PRE_PROD }}'" > vault_pass.txt
+          echo '${{ secrets.VAULT_PASSWORD_PRE_PROD }}' > vault_pass.txt
           ls -la
           ansible-playbook -i hosts playbooks/site.yml \
             --limit=pre_prod \
