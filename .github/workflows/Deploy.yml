@@ -52,11 +52,11 @@ jobs:
       - name: Déployer en PRÉ-PROD
         working-directory: ansible
         run: |
-          ls -la
+          pwd
           echo "${{ secrets.VAULT_PASSWORD_PRE_PROD }}" > vault_pass.txt
           ls -la
           ansible-playbook -i hosts playbooks/site.yml \
             --limit=pre_prod \
-            --vault-password-file vault_pass.txt \
+            --vault-password-file=<(printf "%s" "${{ secrets.VAULT_PASSWORD_PRE_PROD }}") \
             --check
           rm vault_pass.txt
