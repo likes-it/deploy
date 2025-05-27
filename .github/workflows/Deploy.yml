@@ -58,5 +58,4 @@ jobs:
           ansible-playbook -i hosts playbooks/site.yml \
             --limit=pre_prod \
             --vault-password-file vault_pass.txt \
-            --check
           rm vault_pass.txt
